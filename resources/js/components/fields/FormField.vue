@@ -26,17 +26,49 @@
     data() {
       return {
         hasSetInitialValue: false,
+        component: null,
       }
     },
 
     methods: {
-      /*
-       * Set the initial, internal value for the field.
-       */
+      findImageComponent(root) {
+				root.$children.forEach(component => {
+          if (
+            _.get(component.field, 'component') == 'advanced-media-library-field'
+            && _.get(component.field, 'attribute') == this.field.attribute.split('__')[1]
+          ) {
+            this.component = component
+          } else {
+            this.findImageComponent(component)
+          }
+
+				})
+			},
+
       setInitialValue() {
-        let value = this.field.value || [];
+        this.findImageComponent(this.$root);
+        
+        let group = this.$parent.group; 
+        let groups = this.$parent.$parent.$parent.groups; 
+        let old_key = this.$parent.group.key
+        let new_key = this.$parent.group.key.slice(0,16);
+        if (old_key != new_key) {
+          this.$set(this.$parent.group, 'key', new_key)
+          this.$set(this.$parent.$parent.$parent.groups, `${new_key}`, this.$parent.$parent.$parent.groups[old_key])
+          this.$delete(this.$parent.$parent.$parent.groups, `${old_key}`)
           
-        if (!this.field.multiple) {
+          this.$set(this.$parent.$parent.$parent, 'order', this.$parent.$parent.$parent.order.map(item => {
+            return item.length > 16 ? item.slice(0,16) : item
+          }))
+        }
+
+        let value = this.field.value.filter(item => {
+          return item.name.split('__')[0] == this.$parent.group.key
+        }); 
+
+        this.multiple = _.get(this.field, 'extraAttributes.multiple') ? true : false
+          
+        if (!this.multiple) {
           value = value.slice(0, 1);
         }
 
@@ -48,36 +80,35 @@
        * Fill the given FormData object with the field's internal value.
        */
       fill(formData) {
-        const field = this.field.attribute;
+        this.$set(
+          this.component,
+          'value',
+          this.component.value.filter(item => item.file_name.split('__')[0] != this.$parent.group.key)
+        )
+
         this.value.forEach((file, index) => {
-          const isNewImage = !file.id;
-
-          if (isNewImage) {
-            formData.append(`__media__[${field}][${index}]`, file.file, file.name);
-          } else {
-            formData.append(`__media__[${field}][${index}]`, file.id);
+          if (!file.id) {
+            file = {...file, ...{
+              name: this.$parent.group.key + '__' + file.name,
+              file_name: this.$parent.group.key + '__' + file.file_name,
+            }}
           }
-
-          objectToFormData({
-            [`__media-custom-properties__[${field}][${index}]`]: this.getImageCustomProperties(file)
-          }, {}, formData);
+          this.component.value.push(file)
         });
       },
 
-      getImageCustomProperties(image) {
-        return (this.field.customPropertiesFields || []).reduce((properties, { attribute: property }) => {
-          properties[property] = _.get(image, `custom_properties.${property}`);
-
-          return properties;
-        }, {})
-      },
-
-      /**
-       * Update the field's internal value.
-       */
       handleChange(value) {
         this.value = value
       },
     },
   };
 </script>
+<style>
+form > div:nth-last-child(2) {
+  display: none;
+}
+.vue-portal-target form > div:nth-last-child(2) {
+  display: initial;
+}
+</style>
+

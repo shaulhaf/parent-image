@@ -6,7 +6,7 @@ import FormField from './components/fields/FormField';
 Nova.booting((Vue, router) => {
   Vue.use(VuejsClipper);
 
-  Vue.component('index-advanced-media-library-field', IndexField);
-  Vue.component('detail-advanced-media-library-field', DetailField);
-  Vue.component('form-advanced-media-library-field', FormField);
+  Vue.component('index-parentimage', IndexField);
+  Vue.component('detail-parentimage', DetailField);
+  Vue.component('form-parentimage', FormField);
 });

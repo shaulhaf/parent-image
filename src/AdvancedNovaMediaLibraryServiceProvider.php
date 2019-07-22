@@ -16,7 +16,7 @@ class AdvancedNovaMediaLibraryServiceProvider extends ServiceProvider
         });
 
         Nova::serving(function (ServingNova $event) {
-            Nova::script('media-lib-images-field', __DIR__.'/../dist/js/field.js');
+            Nova::script('parent-image', __DIR__.'/../dist/js/field.js');
         });
     }
 

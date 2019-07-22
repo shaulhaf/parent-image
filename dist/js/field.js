@@ -786,6 +786,10 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _FullWidthField__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../FullWidthField */ "./resources/js/components/FullWidthField.vue");
 /* harmony import */ var object_to_formdata__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! object-to-formdata */ "./node_modules/object-to-formdata/index.js");
 /* harmony import */ var object_to_formdata__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(object_to_formdata__WEBPACK_IMPORTED_MODULE_3__);
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); if (enumerableOnly) symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; }); keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i] != null ? arguments[i] : {}; if (i % 2) { ownKeys(source, true).forEach(function (key) { _defineProperty(target, key, source[key]); }); } else if (Object.getOwnPropertyDescriptors) { Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)); } else { ownKeys(source).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } } return target; }
+
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
 
 //
@@ -813,17 +817,46 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
   props: ['resourceName', 'resourceId', 'field'],
   data: function data() {
     return {
-      hasSetInitialValue: false
+      hasSetInitialValue: false,
+      component: null
     };
   },
   methods: {
-    /*
-     * Set the initial, internal value for the field.
-     */
-    setInitialValue: function setInitialValue() {
-      var value = this.field.value || [];
+    findImageComponent: function findImageComponent(root) {
+      var _this = this;
 
-      if (!this.field.multiple) {
+      root.$children.forEach(function (component) {
+        if (_.get(component.field, 'component') == 'advanced-media-library-field' && _.get(component.field, 'attribute') == _this.field.attribute.split('__')[1]) {
+          _this.component = component;
+        } else {
+          _this.findImageComponent(component);
+        }
+      });
+    },
+    setInitialValue: function setInitialValue() {
+      var _this2 = this;
+
+      this.findImageComponent(this.$root);
+      var group = this.$parent.group;
+      var groups = this.$parent.$parent.$parent.groups;
+      var old_key = this.$parent.group.key;
+      var new_key = this.$parent.group.key.slice(0, 16);
+
+      if (old_key != new_key) {
+        this.$set(this.$parent.group, 'key', new_key);
+        this.$set(this.$parent.$parent.$parent.groups, "".concat(new_key), this.$parent.$parent.$parent.groups[old_key]);
+        this.$delete(this.$parent.$parent.$parent.groups, "".concat(old_key));
+        this.$set(this.$parent.$parent.$parent, 'order', this.$parent.$parent.$parent.order.map(function (item) {
+          return item.length > 16 ? item.slice(0, 16) : item;
+        }));
+      }
+
+      var value = this.field.value.filter(function (item) {
+        return item.name.split('__')[0] == _this2.$parent.group.key;
+      });
+      this.multiple = _.get(this.field, 'extraAttributes.multiple') ? true : false;
+
+      if (!this.multiple) {
         value = value.slice(0, 1);
       }
 
@@ -835,32 +868,22 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
      * Fill the given FormData object with the field's internal value.
      */
     fill: function fill(formData) {
-      var _this = this;
+      var _this3 = this;
 
-      var field = this.field.attribute;
+      this.$set(this.component, 'value', this.component.value.filter(function (item) {
+        return item.file_name.split('__')[0] != _this3.$parent.group.key;
+      }));
       this.value.forEach(function (file, index) {
-        var isNewImage = !file.id;
-
-        if (isNewImage) {
-          formData.append("__media__[".concat(field, "][").concat(index, "]"), file.file, file.name);
-        } else {
-          formData.append("__media__[".concat(field, "][").concat(index, "]"), file.id);
+        if (!file.id) {
+          file = _objectSpread({}, file, {}, {
+            name: _this3.$parent.group.key + '__' + file.name,
+            file_name: _this3.$parent.group.key + '__' + file.file_name
+          });
         }
 
-        object_to_formdata__WEBPACK_IMPORTED_MODULE_3___default()(_defineProperty({}, "__media-custom-properties__[".concat(field, "][").concat(index, "]"), _this.getImageCustomProperties(file)), {}, formData);
+        _this3.component.value.push(file);
       });
     },
-    getImageCustomProperties: function getImageCustomProperties(image) {
-      return (this.field.customPropertiesFields || []).reduce(function (properties, _ref) {
-        var property = _ref.attribute;
-        properties[property] = _.get(image, "custom_properties.".concat(property));
-        return properties;
-      }, {});
-    },
-
-    /**
-     * Update the field's internal value.
-     */
     handleChange: function handleChange(value) {
       this.value = value;
     }
@@ -1113,6 +1136,25 @@ exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loa
 
 // module
 exports.push([module.i, ".gallery .gallery-item-image.gallery-item {\n  width: 150px;\n  height: 150px;\n}\n.gallery .gallery-item-image.gallery-item:hover .gallery-item-info {\n  display: flex;\n}\n.gallery .gallery-item-image.gallery-item .gallery-item-info {\n  display: none;\n  align-items: center;\n  justify-content: center;\n  flex-direction: column;\n  background-color: rgba(232, 245, 251, 0.8);\n  border-radius: 10px;\n  position: absolute;\n  z-index: 10;\n  top: 0;\n  bottom: 0;\n  left: 0;\n  right: 0;\n}\n.gallery .gallery-item-image.gallery-item .gallery-item-info .preview {\n  color: var(--black);\n}\n.gallery .gallery-item-image.gallery-item .gallery-item-info .delete {\n  right: 10px;\n  color: var(--danger);\n}\n.gallery .gallery-item-image.gallery-item .gallery-item-info .crop {\n  left: 10px;\n  top: auto;\n  bottom: 10px;\n}\n.gallery .gallery-item-image.gallery-item .gallery-image {\n  -o-object-fit: contain;\n     object-fit: contain;\n  display: block;\n  max-height: 100%;\n  border-radius: 10px;\n}\n.gallery .icon {\n  cursor: pointer;\n  position: absolute;\n  top: 10px;\n  color: var(--info);\n}\n.gallery .edit {\n  right: 30px;\n}\n.gallery .download {\n  left: 10px;\n}", ""]);
+
+// exports
+
+
+/***/ }),
+
+/***/ "./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css&":
+/*!**********************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/css-loader??ref--6-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--6-2!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css& ***!
+  \**********************************************************************************************************************************************************************************************************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(/*! ../../../../node_modules/css-loader/lib/css-base.js */ "./node_modules/css-loader/lib/css-base.js")(false);
+// imports
+
+
+// module
+exports.push([module.i, "\nform > div:nth-last-child(2) {\n  display: none;\n}\n.vue-portal-target form > div:nth-last-child(2) {\n  display: initial;\n}\n", ""]);
 
 // exports
 
@@ -27776,6 +27818,36 @@ if(false) {}
 
 /***/ }),
 
+/***/ "./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css&":
+/*!**************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/style-loader!./node_modules/css-loader??ref--6-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--6-2!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css& ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(/*! !../../../../node_modules/css-loader??ref--6-1!../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../node_modules/postcss-loader/src??ref--6-2!../../../../node_modules/vue-loader/lib??vue-loader-options!./FormField.vue?vue&type=style&index=0&lang=css& */ "./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css&");
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(/*! ../../../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {}
+
+/***/ }),
+
 /***/ "./node_modules/style-loader/lib/addStyles.js":
 /*!****************************************************!*\
   !*** ./node_modules/style-loader/lib/addStyles.js ***!
@@ -36641,7 +36713,9 @@ __webpack_require__.r(__webpack_exports__);
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _FormField_vue_vue_type_template_id_03fb1ceb___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./FormField.vue?vue&type=template&id=03fb1ceb& */ "./resources/js/components/fields/FormField.vue?vue&type=template&id=03fb1ceb&");
 /* harmony import */ var _FormField_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./FormField.vue?vue&type=script&lang=js& */ "./resources/js/components/fields/FormField.vue?vue&type=script&lang=js&");
-/* empty/unused harmony star reexport *//* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+/* empty/unused harmony star reexport *//* harmony import */ var _FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./FormField.vue?vue&type=style&index=0&lang=css& */ "./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css&");
+/* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
 
 
 
@@ -36649,7 +36723,7 @@ __webpack_require__.r(__webpack_exports__);
 
 /* normalize component */
 
-var component = Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_2__["default"])(
+var component = Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__["default"])(
   _FormField_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__["default"],
   _FormField_vue_vue_type_template_id_03fb1ceb___WEBPACK_IMPORTED_MODULE_0__["render"],
   _FormField_vue_vue_type_template_id_03fb1ceb___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
@@ -36678,6 +36752,22 @@ component.options.__file = "resources/js/components/fields/FormField.vue"
 __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../node_modules/babel-loader/lib??ref--4-0!../../../../node_modules/vue-loader/lib??vue-loader-options!./FormField.vue?vue&type=script&lang=js& */ "./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/fields/FormField.vue?vue&type=script&lang=js&");
 /* empty/unused harmony star reexport */ /* harmony default export */ __webpack_exports__["default"] = (_node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
+/***/ "./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css&":
+/*!***************************************************************************************!*\
+  !*** ./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css& ***!
+  \***************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_6_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_6_2_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../../node_modules/style-loader!../../../../node_modules/css-loader??ref--6-1!../../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../../node_modules/postcss-loader/src??ref--6-2!../../../../node_modules/vue-loader/lib??vue-loader-options!./FormField.vue?vue&type=style&index=0&lang=css& */ "./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/fields/FormField.vue?vue&type=style&index=0&lang=css&");
+/* harmony import */ var _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_6_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_6_2_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_6_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_6_2_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__);
+/* harmony reexport (unknown) */ for(var __WEBPACK_IMPORT_KEY__ in _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_6_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_6_2_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__) if(__WEBPACK_IMPORT_KEY__ !== 'default') (function(key) { __webpack_require__.d(__webpack_exports__, key, function() { return _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_6_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_6_2_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__[key]; }) }(__WEBPACK_IMPORT_KEY__));
+ /* harmony default export */ __webpack_exports__["default"] = (_node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_6_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_6_2_node_modules_vue_loader_lib_index_js_vue_loader_options_FormField_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0___default.a); 
 
 /***/ }),
 
@@ -36893,9 +36983,9 @@ __webpack_require__.r(__webpack_exports__);
 
 Nova.booting(function (Vue, router) {
   Vue.use(vuejs_clipper__WEBPACK_IMPORTED_MODULE_0__["default"]);
-  Vue.component('index-advanced-media-library-field', _components_fields_IndexField__WEBPACK_IMPORTED_MODULE_1__["default"]);
-  Vue.component('detail-advanced-media-library-field', _components_fields_DetailField__WEBPACK_IMPORTED_MODULE_2__["default"]);
-  Vue.component('form-advanced-media-library-field', _components_fields_FormField__WEBPACK_IMPORTED_MODULE_3__["default"]);
+  Vue.component('index-parentimage', _components_fields_IndexField__WEBPACK_IMPORTED_MODULE_1__["default"]);
+  Vue.component('detail-parentimage', _components_fields_DetailField__WEBPACK_IMPORTED_MODULE_2__["default"]);
+  Vue.component('form-parentimage', _components_fields_FormField__WEBPACK_IMPORTED_MODULE_3__["default"]);
 });
 
 /***/ }),
