@@ -108,7 +108,10 @@ form > div:nth-last-child(2) {
   display: none;
 }
 .vue-portal-target form > div:nth-last-child(2) {
-  display: initial;
+  display: block;
+}
+.modal > div {
+  padding-top: 100px;
 }
 </style>
 

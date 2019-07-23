@@ -1154,7 +1154,7 @@ exports = module.exports = __webpack_require__(/*! ../../../../node_modules/css-
 
 
 // module
-exports.push([module.i, "\nform > div:nth-last-child(2) {\n  display: none;\n}\n.vue-portal-target form > div:nth-last-child(2) {\n  display: initial;\n}\n", ""]);
+exports.push([module.i, "\nform > div:nth-last-child(2) {\n  display: none;\n}\n.vue-portal-target form > div:nth-last-child(2) {\n  display: block;\n}\n.modal > div {\n  padding-top: 100px;\n}\n", ""]);
 
 // exports
 
