@@ -1,5 +1,4 @@
 <?php
-
 namespace Capitalc\AdvancedNovaMediaLibrary\Http\Controllers;
 
 use Spatie\MediaLibrary\Models\Media;
