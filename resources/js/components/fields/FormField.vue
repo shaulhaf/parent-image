@@ -110,9 +110,6 @@ form > div:nth-last-child(2) {
 form > div:first-child {
     display: block;
 }
-/* .vue-portal-target form > div:nth-last-child(2) {
-  display: block;
-} */
 .modal > div {
   padding-top: 100px;
 }
